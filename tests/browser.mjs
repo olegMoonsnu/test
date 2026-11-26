@@ -96,9 +96,15 @@ try{
     await btn('Экспорт').click();await btn('Копировать для Excel').click();
     await p.waitForFunction(()=>window.__studioTestClipboard.includes('demoCall$1000'));
     assert.ok((await p.evaluate(()=>window.__studioTestClipboard)).includes('\t'));
+    await p.addInitScript(()=>{
+      window.print=()=>{
+        parent.__studioTestPrint={sections:document.querySelectorAll('section').length,title:document.title};
+        window.dispatchEvent(new Event('afterprint'));
+      };
+    });
     await btn('Экспорт').click();await btn('Печать отчёта').click();
-    const printed=p.frameLocator('iframe[title="Печать отчёта"]');
-    await printed.locator('h1').waitFor({state:'attached'});assert.equal(await printed.locator('section').count(),14);
+    await p.waitForFunction(()=>window.__studioTestPrint?.sections===14);
+    assert.equal(await p.evaluate(()=>window.__studioTestPrint.title),'Импортировано');
   });
   await report('Все 18 представлений и пустые состояния',async()=>{
     const statuses=await p.evaluate(async()=>{
