@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NSD Analytics Studio · Демонстрация</title>
+<style>*{box-sizing:border-box}body{margin:0;color:#222638;background:#f3f4f9;font:14px/1.5 Inter,Arial,sans-serif}main{max-width:1050px;margin:7vh auto;padding:25px}h1{font-size:clamp(30px,5vw,56px);letter-spacing:-.065em;margin:12px 0}p{max-width:660px;color:#505770}.controls{padding:22px;background:white;border:1px solid #dedfeb;border-radius:9px;display:flex;gap:12px;align-items:end;flex-wrap:wrap}label{display:grid;gap:4px}select,input,button{font:inherit;padding:8px 11px;border:1px solid #cfd2df;border-radius:5px;background:white}button{cursor:pointer}button.primary{color:white;background:#604dbe}output{display:block;margin-top:15px;white-space:pre-wrap}h2{font-size:18px}code{color:#5b48aa}</style>
+<script defer src="../dist/nsd-analytics.js"></script><script defer src="mock-data.js"></script><script defer src="launch.js"></script></head>
+<body><main><h1>NSD Analytics Studio</h1><p>Выберите синтетический набор и откройте дашборд. Все операции выполняются в браузере. Чтобы сменить набор, закройте окно аналитики.</p>
+<div class="controls"><label>Набор<select id="dataset"><option value="tickets">Обращения</option><option value="people">Сотрудники</option><option value="assets">Оборудование</option></select></label>
+<label>Объектов<input type="number" min="0" max="100000" value="1000" id="count" list="sizes"><datalist id="sizes"><option>100</option><option>1000</option><option>10000</option><option>50000</option><option>100000</option></datalist></label>
+<button type="button" class="primary" id="launch">Открыть аналитику</button><button id="bench">Измерить открытие</button></div>
+<output id="timing" aria-live="polite"></output></main></body></html>

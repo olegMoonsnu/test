@@ -20,7 +20,7 @@ function spend(budget, amount) {
   check(budget.used <= budget.max, 'Превышен лимит объёма данных');
 }
 export function copyValue(value, budget, depth = 0) {
-  check(depth <= LIMIT.depth, 'Слишком глубокая структура');
+  check(depth <= (budget.depth ?? LIMIT.depth), 'Слишком глубокая структура');
   spend(budget, 8);
   if (value == null) return null;
   if (typeof value === 'number') return Number.isFinite(value) ? value : null;
@@ -33,7 +33,9 @@ export function copyValue(value, budget, depth = 0) {
   if (value instanceof Date) return Number.isFinite(value.getTime()) ? value.toISOString() : null;
   if (Array.isArray(value)) {
     check(value.length <= LIMIT.list, 'Слишком длинный многозначный атрибут');
-    return Array.from({length: value.length}, (_, i) => copyValue(readOwn(value, i), budget, depth + 1));
+    const list = new Array(value.length);
+    for (let i = 0; i < value.length; i++) list[i] = copyValue(readOwn(value, i), budget, depth + 1);
+    return list;
   }
   check(plain(value), 'Ожидается JSON-совместимый объект');
   const result = Object.create(null);

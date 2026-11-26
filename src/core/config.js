@@ -67,7 +67,7 @@ export function config(input={}) {
   if (typeof input === 'string') { check(input.length <= LIMIT.config,'Слишком большой шаблон'); input = JSON.parse(input); }
   check(plain(input),'Конфигурация должна быть объектом');
   // Validate even ignored keys before projecting into a fresh configuration.
-  const v = copyValue(input,{used:0,max:LIMIT.config});
+  const v = copyValue(input,{used:0,max:LIMIT.config,depth:24});
   check(v.version == null || v.version === 1,'Неподдерживаемая версия шаблона');
   const columns = list(v.columns ?? [],LIMIT.columns).map(c => {
     check(plain(c),'Некорректная колонка');
@@ -81,5 +81,5 @@ export function config(input={}) {
   try { new Intl.NumberFormat(locale); } catch { throw new Error('Некорректная локаль'); }
   return {version:1,title:text(v.title,'Аналитика объектов'),locale,theme:pick(v.theme,['light','dark'],'light'),
     columns, includeUnlisted:v.includeUnlisted === true, filter:filterTree(v.filter), widgets,
-    pivot:pivotSpec(v.pivot), autoWidgets:v.autoWidgets ?? !own(v,'widgets')};
+    pivot:pivotSpec(v.pivot), autoPivot:v.autoPivot ?? !own(v,'pivot'), autoWidgets:v.autoWidgets ?? !own(v,'widgets')};
 }
