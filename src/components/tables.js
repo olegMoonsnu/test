@@ -1,5 +1,5 @@
 import {el,button,input} from './dom.js';
-import {field} from '../utils/data.js';
+import {LIMIT,check,field} from '../utils/data.js';
 import {cellValue} from '../engines/pivot.js';
 import {selection,pathKey} from '../engines/dimensions.js';
 
@@ -42,6 +42,7 @@ export async function objectTable(app,root,query,token,compact=false) {
 }
 export function pivotMatrix(model,spec,fmt,t){
   const path=p=>p.map(v=>v.text).join(' / ')||t('Итого');
+  check(model.rows.length*model.cols.length*spec.measures.length<=LIMIT.cells*4,'Плотная выгрузка слишком велика. Сократите измерения сводной.');
   const headers=[t('Группа'),...model.cols.flatMap(c=>spec.measures.map(m=>path(c.path)+' · '+m.op+(m.field?' '+m.field:'')))];
   const rows=model.rows.map(r=>[path(r.path),...model.cols.flatMap(c=>spec.measures.map((m,i)=>cellValue(model,r.key,c.key,i)))]);
   return {headers,rows};

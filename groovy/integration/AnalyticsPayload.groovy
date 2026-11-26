@@ -9,9 +9,7 @@ class AnalyticsPayload {
     static String encode(Iterable records, Collection<String> requestedFields,
                          Closure<Boolean> mayReadRow, Closure<Boolean> mayReadField,
                          Closure readProjectedField) {
-        if (!records || requestedFields == null) {
-            if (records == null || requestedFields == null) throw new IllegalArgumentException('Missing input')
-        }
+        if (records == null || requestedFields == null) throw new IllegalArgumentException('Missing input')
         List<String> names = requestedFields.toList().unique()
         if (names.size() > 96 || !names.every { validKey(it) }) throw new IllegalArgumentException('Invalid field list')
         StringBuilder out = new StringBuilder('[')
@@ -47,7 +45,7 @@ class AnalyticsPayload {
         if (v instanceof Number) return Double.isFinite(v.doubleValue()) ? v : null
         if (v instanceof Date) return v.time
         if (v instanceof UUID) return v.toString()
-        if ((v instanceof ArrayList || v instanceof LinkedList) && v.size() <= 128) {
+        if ((v.getClass() == ArrayList || v.getClass() == LinkedList) && v.size() <= 128) {
             return v.collect { clean(it, depth + 1, budget) }
         }
         if ((v.getClass() == LinkedHashMap || v.getClass() == HashMap) && v.size() <= 96) {

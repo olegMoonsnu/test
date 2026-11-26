@@ -1,7 +1,7 @@
 export const LIMIT = Object.freeze({
   rows: 100000, columns: 96, depth: 8, list: 128, text: 16384,
   bytes: 64 * 1024 * 1024, config: 128 * 1024, groups: 12000,
-  cells: 12000, fanout: 64, widgets: 32, filters: 80, exportBytes: 32 * 1024 * 1024
+  updates: 3000000, cells: 12000, fanout: 64, widgets: 32, filters: 80, exportBytes: 32 * 1024 * 1024
 });
 const forbidden = new Set(['__proto__', 'prototype', 'constructor']);
 export const own = (object, key) => Object.prototype.hasOwnProperty.call(object, key);

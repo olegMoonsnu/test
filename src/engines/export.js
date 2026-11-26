@@ -60,8 +60,22 @@ export function svgText(node){
     for(const attr of ['fill','stroke'])if(copy[i].getAttribute(attr)?.includes('var('))copy[i].setAttribute(attr,getComputedStyle(source[i])[attr]);
     for(const attr of ['tabindex','role','class'])copy[i].removeAttribute(attr);
   }
+  const legend=node.parentElement?.querySelector('.legend');
   const box=node.viewBox.baseVal;
-  clone.setAttribute('width',String(box.width));clone.setAttribute('height',String(box.height));
+  if(legend){
+    const ns='http://www.w3.org/2000/svg';
+    const labels=[...legend.children];
+    labels.forEach((entry,i)=>{
+      const y=box.height+14+i*16;
+      const dot=document.createElementNS(ns,'rect');
+      for(const [k,v] of Object.entries({x:10,y:y-8,width:8,height:8,rx:2,fill:getComputedStyle(entry.querySelector('i')).backgroundColor}))dot.setAttribute(k,String(v));
+      const text=document.createElementNS(ns,'text');
+      text.setAttribute('x','24');text.setAttribute('y',String(y));text.setAttribute('font-size','11');
+      text.setAttribute('fill',getComputedStyle(entry).color);text.textContent=entry.textContent.slice(0,80);clone.append(dot,text);
+    });
+    clone.setAttribute('viewBox','0 0 '+box.width+' '+(box.height+labels.length*16+5));
+  }
+  clone.setAttribute('width',String(box.width));clone.setAttribute('height',clone.getAttribute('viewBox').split(/\s+/)[3]);
   return new XMLSerializer().serializeToString(clone);
 }
 export async function pngBlob(node){

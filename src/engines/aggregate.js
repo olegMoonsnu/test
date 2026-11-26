@@ -4,11 +4,15 @@ import {tuples,pathKey,selection} from './dimensions.js';
 import {scan} from './performance.js';
 
 export async function grouped(data, ids, w, token) {
+  let updates=0;
   const groups = new Map(), total = new Accumulator(w.measure);
   await scan(ids, id => {
     const row=data[id], value=field(row,w.measure.field);
     total.add(value);
-    for(const path of tuples(row,w.dims)) {
+    const paths=tuples(row,w.dims);
+    updates+=paths.length;
+    check(updates<=LIMIT.updates,'Превышен лимит обновлений групп');
+    for(const path of paths) {
       const key=pathKey(path);
       let g=groups.get(key);
       if (!g) {

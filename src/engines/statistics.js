@@ -12,6 +12,11 @@ export function relative(value, base) {
   const ratio = (value - base) / Math.abs(base) * 100;
   return Number.isFinite(ratio) ? ratio : null;
 }
+function lastInside(sorted, upper) {
+  let index=sorted.length-1;
+  while(index>0 && sorted[index]>upper) index--;
+  return index;
+}
 export function boxSummary(samples) {
   if (!samples.length) return null;
   const a = samples.slice().sort((x,y) => x-y);
@@ -19,7 +24,7 @@ export function boxSummary(samples) {
   const lower = q1 - 1.5 * iqr, upper = q3 + 1.5 * iqr;
   const outliers = a.filter(x => x < lower || x > upper);
   return {q1, q3, median:quantile(a,.5), min:a.find(x => x >= lower),
-    max:a[a.length - 1 - a.slice().reverse().findIndex(x => x <= upper)], lower, upper, outliers};
+    max:a[lastInside(a,upper)], lower, upper, outliers};
 }
 export class Accumulator {
   constructor(measure) {

@@ -148,7 +148,8 @@ export function chart(model,w,ctx) {
       const listed=data.slice(0,7);
       listed.forEach((g,i)=>{
         const yy=cy-(listed.length-1)*12+i*24;
-        s.append(rect(258,yy-7,9,9,colors[i%colors.length],3));txt(s,275,yy+2,short(name(g),20),12,'start',ink);
+        s.append(rect(258,yy-7,9,9,colors[i%colors.length],3));
+        mark(txt(s,275,yy+2,short(name(g),20),12,'start',ink),name(g)+' · '+fmt(g.value),()=>choose(g));
         txt(s,505,yy+2,fmt(g.value/sum*100)+'%',12,'end');
       });
       if(data.length>7)legend(data.slice(7).map((g,i)=>[name(g),colors[(i+7)%colors.length]]));

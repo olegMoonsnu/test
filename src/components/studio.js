@@ -142,7 +142,7 @@ export class Studio {
     if(openObjects)this.tab='objects';this.draw();
   }
   pick(w,g){
-    const items=[[this.t('Фильтровать дашборд'),()=>this.drill(g.terms||[],[],false)],
+    const items=[[this.t('Фильтровать дашборд'),()=>this.drill(g.terms||[],[w.filter],false)],
       [this.t('Показать исходные объекты'),()=>this.drill(g.terms||[],[w.filter],true)]];
     const n=this.depth.get(w.id)||0;
     if(n+1<w.dims.length&&!['stacked','heatmap','scatter','box','histogram'].includes(w.type))items.push([this.t('Следующий уровень'),()=>{
@@ -266,12 +266,7 @@ export class Studio {
           blob=new Blob([!copy&&['csv','tsv'].includes(kind)?'\ufeff':'',str],{type:formats[kind]});
           check(blob.size<=LIMIT.exportBytes,'Слишком большой экспорт');
         }else if(kind==='html'&&this.tab==='dashboard'){
-          let body='';
-          for(const card of this.content.querySelectorAll('.widget')){
-            body+='<section><h2>'+escapeHtml(card.querySelector('h3').textContent)+'</h2>';
-            const svg=card.querySelector('.viz');body+=svg?svgText(svg):'<p>'+escapeHtml(card.querySelector('.kpi-body,.chart-body')?.textContent)+'</p>';body+='</section>';
-          }
-          blob=new Blob([reportPage(this.cfg.title,body)],{type:formats.html});
+          blob=new Blob([await this.dashboardReport(token)],{type:formats.html});
         }else{
           const q=this.tab==='objects'?this.tableQuery:this.query();
           blob=await exportRows(this.session,q,this.columns,kind,this.cfg.title,token,copy);
@@ -283,16 +278,38 @@ export class Studio {
     }
     items.push([t('Печать отчёта'),()=>this.print()]);this.menu(t('Экспорт'),items);
   }
+  async dashboardReport(token){
+    let body='',bytes=0;
+    const encoder=new TextEncoder();
+    for(const card of this.content.querySelectorAll('.widget')){
+      const w=this.cfg.widgets.find(v=>v.id===card.dataset.widget);
+      const svg=card.querySelector('.viz');
+      let content;
+      if(svg)content=svgText(svg);
+      else if(w.type==='table'||w.type==='pivot'){
+        const q=this.query([w.filter]);let html;
+        if(w.type==='table')html=await (await exportRows(this.session,q,this.columns,'html',w.title,token)).text();
+        else{
+          const spec=widgetPivot(w),result=await this.session.run('pivot',{...q,spec},token);
+          const m=pivotMatrix(result,spec,this.fmt,this.t);
+          html=encodeTable(m.headers,m.rows,'html',w.title);
+        }
+        content=html.slice(html.indexOf('<table>'),html.lastIndexOf('</table>')+8);
+      }else content='<p>'+escapeHtml(card.querySelector('.kpi-body,.chart-body')?.textContent)+'</p>';
+      const section='<section><h2>'+escapeHtml(w.title)+'</h2>'+content+'</section>';
+      bytes+=encoder.encode(section).length;
+      check(bytes<=LIMIT.exportBytes,'Отчёт превышает 32 МиБ. Сузьте выборку.');
+      body+=section;
+    }
+    return reportPage(this.cfg.title,body);
+  }
   print(){
     const frame=el('iframe');frame.title=this.t('Печать отчёта');frame.style.cssText='position:fixed;right:0;bottom:0;width:1px;height:1px;border:0';
     const token=this.token;
     const run=async()=>{
       let content;
       if(this.tab==='dashboard'){
-        const blocks=[...this.content.querySelectorAll('.widget')].map(card=>{
-          const s=card.querySelector('.viz');
-          return '<section><h2>'+escapeHtml(card.querySelector('h3').textContent)+'</h2>'+(s?svgText(s):escapeHtml(card.querySelector('.kpi-body,.chart-body')?.textContent))+'</section>';
-        });content=reportPage(this.cfg.title,blocks.join(''));
+        content=await this.dashboardReport(token);
       }else if(this.tab==='pivot'&&this.pivotResult){
         const m=pivotMatrix(this.pivotResult,this.cfg.pivot,this.fmt,this.t);content=encodeTable(m.headers,m.rows,'html',this.cfg.title);
       }else content=await (await exportRows(this.session,this.tab==='objects'?this.tableQuery:this.query(),this.columns,'html',this.cfg.title,token)).text();

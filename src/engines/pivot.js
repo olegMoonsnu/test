@@ -12,11 +12,14 @@ function prefixes(row,dims) {
 }
 export async function pivot(data,ids,spec,token) {
   const rows=new Map([['[]',[]]]), cols=new Map([['[]',[]]]), cells=new Map();
+  let updates=0;
   const states=()=>spec.measures.map(m=>new Accumulator(m));
   cells.set(JSON.stringify(['[]','[]']),states());
   await scan(ids,id=>{
     const row=data[id], rp=prefixes(row,spec.rows),cp=prefixes(row,spec.cols);
     check(rp.size*cp.size<=LIMIT.fanout*12,'Слишком много комбинаций в сводной');
+    updates+=rp.size*cp.size*spec.measures.length;
+    check(updates<=LIMIT.updates,'Слишком много обновлений ячеек. Сократите число мер, уровней или строк.');
     const values=spec.measures.map(m=>field(row,m.field));
     for(const [rk,r] of rp) {
       rows.set(rk,r);
