@@ -165,6 +165,49 @@ try{
     const dates=p.locator('input[type=date]');for(const [i,v] of ['2026-01-01','2026-01-31','2026-02-01','2026-02-28'].entries())await dates.nth(i).fill(v);
     await btn('Сравнить периоды').click();await p.getByText(/Предыдущий\s+\d.*Текущий/).waitFor();
   });
+  const hostPage = 'test-output/customization-host.html';
+  await writeFile(hostPage, '<!doctype html><meta charset="utf-8"><script src="../dist/nsd-analytics-customization.js"></script><body><main>Стенд загрузки JS</main><script src="../dist/nsd-analytics-customization.js"></script></body>');
+  const hostUrl = pathToFileURL(resolve(hostPage)).href;
+  await p.goto(hostUrl);
+  const launcher = btn('Аналитика');
+  const chooseFile = p.locator('#nsd-analytics-studio-launcher input[type=file]');
+  await report('Один JS в head и body создаёт одну кнопку, запускает демо и сохраняет адрес', async () => {
+    assert.equal(await launcher.count(), 1);
+    assert.equal(await p.locator('[data-nsd-analytics="studio"]').count(), 0);
+    await launcher.press('Enter');
+    await btn('Открыть демо').click();
+    await ready();
+    assert.ok(await p.getByRole('heading', {name: 'Демо · 3 вымышленные заявки'}).isVisible());
+    assert.equal(await p.locator('[data-widget=count] .kpi-body strong').textContent(), '3');
+    assert.match(await p.locator('[data-widget=average] .kpi-body strong').textContent(), /^60\s*мин$/);
+    await btn('Объекты').click();
+    await ready();
+    assert.equal(await p.locator('.records tbody tr[tabindex]').count(), 3);
+    await p.keyboard.press('Escape');
+    assert.equal(await p.locator('[data-nsd-analytics="studio"]').count(), 0);
+    assert.equal(p.url(), hostUrl);
+  });
+  await report('Кнопка принимает локальный JSON, сообщает об ошибке и разрешает повторный выбор', async () => {
+    await launcher.click();
+    for (const [contents, error] of [['}', 'Проверьте формат'], ['{}', 'ожидается массив']]) {
+      await chooseFile.setInputFiles({name:'data.json', mimeType:'application/json', buffer:Buffer.from(contents)});
+      await p.getByRole('status').filter({hasText:error}).waitFor();
+    }
+    const uploadDialog = p.waitForEvent('filechooser');
+    await btn('Выбрать файл JSON').click();
+    const fileChooser = await uploadDialog;
+    await fileChooser.setFiles({name:'data.json', mimeType:'application/json', buffer:Buffer.from('[{"status":"На проверке"}]')});
+    await ready();
+    assert.ok(await p.getByRole('heading', {name:'Аналитика из файла'}).isVisible());
+    await btn('Объекты').click();
+    await ready();
+    assert.ok(await p.getByRole('cell', {name:'На проверке', exact:true}).isVisible());
+    await p.keyboard.press('Escape');
+    await launcher.click();
+    await btn('Закрыть').click();
+    assert.equal(await p.locator('dialog[open]').count(), 0);
+    assert.equal(p.url(), hostUrl);
+  });
   await report('Браузер не обращался к сети и не выдавал необработанных ошибок',async()=>{
     assert.deepEqual(network,[]);assert.deepEqual(errors,[]);
   });

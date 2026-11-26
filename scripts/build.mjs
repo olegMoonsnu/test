@@ -7,3 +7,12 @@ for(const minify of [false,true]) await build({...common,entryPoints:['src/adapt
   outfile:'dist/nsd-analytics'+(minify?'.min':'')+'.js',
   define:{__NSD_WORKER__:JSON.stringify(worker.outputFiles[0].text)},
   banner:{js:'/*! NSD Analytics Studio v0.1.0 | MIT */'}});
+
+await build({
+  ...common,
+  entryPoints: ['src/adapters/customization.js'],
+  outfile: 'dist/nsd-analytics-customization.js',
+  minify: true,
+  define: {__NSD_WORKER__: JSON.stringify(worker.outputFiles[0].text)},
+  banner: {js: '/*! NSD Analytics Studio v0.1.0 | Catalog customization | MIT */'}
+});
