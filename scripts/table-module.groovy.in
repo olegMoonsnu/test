@@ -1,0 +1,53 @@
+// Модуль NSD: nsdAnalyticsStudio. Код действия передаёт только разрешённую проекцию.
+import groovy.json.JsonOutput
+
+String open(List rows, Map settings) {
+    if (rows == null || rows.size() > 1000) throw new IllegalArgumentException('В выборке больше 1000 строк')
+    checkSettings(settings, 0, [0] as int[])
+    int limit = 2 * 1024 * 1024
+    // Входные строки должны быть обычными Map со скалярными значениями.
+    StringBuilder json = new StringBuilder('{"rows":[')
+    rows.eachWithIndex { row, index ->
+        if (!(row instanceof LinkedHashMap || row instanceof HashMap) || row.size() > 96)
+            throw new IllegalArgumentException('Ожидалась подготовленная строка отчёта')
+        row.each { k, v ->
+            if (!(k instanceof String) || !k || k.size() > 128 ||
+                k.tokenize('.').any { it in ['constructor', 'prototype', '__proto__'] } ||
+                !(v == null || v instanceof Boolean || v instanceof Number || (v instanceof String && v.size() <= 16384)))
+                throw new IllegalArgumentException('Допускаются только скалярные поля отчёта')
+        }
+        if (index) json.append(',')
+        json.append(JsonOutput.toJson(row))
+        if (json.length() > limit) throw new IllegalArgumentException('Отчёт превышает 2 МиБ. Сузьте фильтр.')
+    }
+    json.append('],"settings":').append(JsonOutput.toJson(settings)).append('}')
+    if (json.length() > limit) throw new IllegalArgumentException('Отчёт превышает 2 МиБ. Сузьте фильтр.')
+    return viewerPrefix() + JsonOutput.toJson(json.toString()).replace('<', '\\u003c') + ');'
+}
+
+private void checkSettings(Object value, int depth, int[] size) {
+    if (depth > 20 || ++size[0] > 32768)
+        throw new IllegalArgumentException('Настройки отчёта слишком велики')
+    if (value == null || value instanceof Boolean || value instanceof Number) return
+    if (value instanceof String) {
+        size[0] += value.length()
+        if (size[0] > 32768) throw new IllegalArgumentException('Настройки отчёта слишком велики')
+        return
+    }
+    if (value instanceof List) {
+        value.each { checkSettings(it, depth + 1, size) }
+    } else if (value instanceof HashMap) {
+        value.each { k, v ->
+            if (!(k instanceof String) || k in ['constructor', 'prototype', '__proto__'])
+                throw new IllegalArgumentException('Некорректный ключ настроек')
+            checkSettings(k, depth + 1, size)
+            checkSettings(v, depth + 1, size)
+        }
+    } else {
+        throw new IllegalArgumentException('Параметры должны быть простыми значениями')
+    }
+}
+
+private String viewerPrefix() {
+    return /* GENERATED VIEWER */
+}

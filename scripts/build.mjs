@@ -1,4 +1,5 @@
 import {build} from 'esbuild';
+import {buildTableModule} from './build-table-module.mjs';
 import {mkdir} from 'node:fs/promises';
 await mkdir('dist',{recursive:true});
 const common={bundle:true,format:'iife',platform:'browser',target:'es2020',charset:'utf8',legalComments:'none',loader:{'.css':'text'}};
@@ -16,3 +17,5 @@ await build({
   define: {__NSD_WORKER__: JSON.stringify(worker.outputFiles[0].text)},
   banner: {js: '/*! NSD Analytics Studio v0.1.0 | Catalog customization | MIT */'}
 });
+
+await buildTableModule(common);

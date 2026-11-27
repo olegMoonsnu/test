@@ -12,6 +12,10 @@
 
 ## Если нужны интерактивные графики Studio
 
+Для открытия полной панели через каталог скриптовых модулей используйте [модуль и тело действия таблицы](table-module.md).
+
+## Если клиентская Studio уже установлена отдельно
+
 Для панели с графиками в окне оператора должен быть доступен `window.NSDAnalytics`, подключённый разрешённым для установки способом. [Подпись файла кастомизации](customization.md)
 
 [TableStudioAction.groovy](../groovy/integration/TableStudioAction.groovy) использует [AnalyticsPayload.groovy](../groovy/integration/AnalyticsPayload.groovy). После подключения этих классов и проверок доступа замените тело действия вызовом:

@@ -7,3 +7,5 @@ java -cp "$GROOVY_JAR" org.codehaus.groovy.tools.FileSystemCompiler -d "$classes
 java -cp "$classes:$GROOVY_JAR" groovy.ui.GroovyMain groovy/examples/PrepareOperation.groovy
 java -cp "$classes:$GROOVY_JAR" groovy.ui.GroovyMain tests/ProjectionTest.groovy
 java -cp "$classes:$GROOVY_JAR" groovy.ui.GroovyMain tests/TableButtonTest.groovy "$@"
+mkdir -p test-output
+java -cp "$classes:$GROOVY_JAR" groovy.ui.GroovyMain tests/TableStudioModuleTest.groovy test-output/table-module-fixture.js
