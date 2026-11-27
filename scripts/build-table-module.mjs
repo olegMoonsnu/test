@@ -13,28 +13,29 @@ export async function buildTableModule(common) {
     "form-action 'none'; script-src 'sha256-" + digest + "'; style-src 'unsafe-inline'; img-src data: blob:; frame-src 'none'" + '">' +
     '<title>Аналитика таблицы</title><body><script id="analytics-payload" type="application/json">' +
     'NSD_TABLE_PACKET_HERE</script><script>' + code + '</script></body></html>';
-  const prefix = '(' + openTableDialog.toString() + ')(' + JSON.stringify(page) + ',';
+  // A host may put the returned JS inside an HTML script element. Encode HTML
+  // delimiters in the string literal before handing the program to the host.
+  const pageLiteral = JSON.stringify(page).replaceAll('<', '\\u003c');
+  const prefix = '(' + openTableDialog.toString() + ')(' + pageLiteral + ',';
   // Groovy/JVM string constants have a 65535-byte limit. Join small independent constants at runtime.
   const parts = prefix.match(/[\s\S]{1,6000}/gu).map(s =>
     "'''" + s.replaceAll('\\','\\\\').replaceAll("'", "\\'") + "'''");
   const expression = '[' + parts.join(',\n') + "].join('')";
-  const template = await readFile('scripts/table-module.groovy.in','utf8');
+  const packet = (await readFile('scripts/table-packet.groovy.in','utf8')).trimEnd();
   const dir = 'groovy/table-studio';
   const action = await readFile(dir + '/TableButton.groovy', 'utf8');
-  const marker = '/* GENERATED VIEWER */';
-  const moduleHeader = '// Модуль NSD: nsdAnalyticsStudio. Код действия передаёт только разрешённую проекцию.\n';
+  const indent = src => src.replace(/^(.+)$/gm, '    $1');
   const imports = 'import groovy.json.JsonOutput\n\n';
-  await writeFile(dir + '/nsdAnalyticsStudio.groovy',
-    moduleHeader + imports + template.replace(marker, () => expression));
+  const jsExpression = expression + " + packet + ');'";
+  const moduleHeader = '// Модуль NSD: nsdAnalyticsStudio. Код действия передаёт только разрешённую проекцию.\n';
+  await writeFile(dir + '/nsdAnalyticsStudio.groovy', moduleHeader + imports +
+    'String open(List rows, Map settings) {\n' + indent(packet) + '\n    return ' + jsExpression + '\n}\n');
 
-  // Inline the same renderer in a local object so the event body can also run
-  // inside an enclosing NSD closure. Indent before inserting literal JS chunks.
-  const invoke = '    result.executeJavaScript(modules.nsdAnalyticsStudio.open(rows, settings))';
-  if (action.split(invoke).length !== 2) throw new Error('Expected one Studio call in TableButton.groovy');
-  const localMethods = template.trimEnd().replace(/^(.+)$/gm, '        $1');
-  const localCall = '    def studio = new Object() {\n' + localMethods.replace(marker, () => expression) +
-    '\n    }\n    result.executeJavaScript(studio.open(rows, settings))';
+  const call = '    String js = modules.nsdAnalyticsStudio.open(rows, settings)';
+  if (action.split(call).length !== 2) throw new Error('Expected one Studio call in TableButton.groovy');
   const actionHeader = '// Полное тело действия «Аналитика». Параметры находятся в начале файла.\n';
-  await writeFile(dir + '/TableAnalyticsAction.groovy',
-    actionHeader + imports + action.replace(invoke, () => localCall));
+  // The single event contains plain Groovy statements and one directly typed
+  // result.executeJavaScript(js) call. No auxiliary module or anonymous class.
+  await writeFile(dir + '/TableAnalyticsAction.groovy', actionHeader + imports +
+    action.replace(call, () => indent(packet) + '\n    String js = ' + jsExpression));
 }

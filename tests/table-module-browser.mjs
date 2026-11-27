@@ -47,6 +47,28 @@ try {
   assert.equal(page.url(),'about:blank');
   assert.deepEqual(errors,[]);
   assert.deepEqual(requests,[]);
+  // Exercise HTML script delivery in addition to assigning text to a script node.
+  const inline = await browser.newPage();
+  const inlineErrors = [];
+  inline.on('pageerror', error => inlineErrors.push(error.name));
+  const inlineHtml = '<!doctype html><meta charset="utf-8"><body><script>' + action + '</script></body>';
+  await inline.setContent(inlineHtml);
+  const inlineFrame = inline.frameLocator('#nsd-table-studio-frame-dialog iframe');
+  await inlineFrame.locator('.shell[aria-busy=false]').waitFor();
+  assert.equal(await inlineFrame.locator('[data-widget=count] .kpi-body strong').textContent(), '3');
+  await inlineFrame.getByRole('button',{name:'Объекты',exact:true}).click();
+  await inlineFrame.getByRole('cell',{name:'Закрыта </script> & $1',exact:true}).waitFor();
+  await inlineFrame.getByRole('button',{name:'Закрыть',exact:true}).click();
+  assert.deepEqual(inlineErrors, []);
+  await inline.evaluate(() => { HTMLDialogElement.prototype.showModal = undefined; });
+  const unsupported = inline.waitForEvent('dialog');
+  const injected = inline.addScriptTag({content:action});
+  const notice = await unsupported;
+  assert.match(notice.message(), /Код кнопки выполнен/);
+  await notice.accept();
+  await injected;
+  assert.equal(await inline.locator('#nsd-table-studio-frame-dialog').count(), 0);
+  await inline.close();
   // An inherited host CSP blocking document scripts must leave a closable error.
   await page.route('https://fixture.test/**', route => {
     if (route.request().url().endsWith('/action.js')) return route.fulfill({contentType:'application/javascript; charset=utf-8',body:action});
@@ -57,5 +79,5 @@ try {
   await page.getByRole('status').filter({hasText:'Окно Studio не запустилось'}).waitFor({timeout:22000});
   await page.getByRole('button',{name:'Закрыть',exact:true}).click();
   assert.equal(await page.locator('dialog[open]').count(),0);
-  console.log('Table module in Chromium: KPI, filtered source rows, pivot, CSV, isolation, no network, repeat, close and CSP failure passed.');
+  console.log('Table module in Chromium: KPI, filtered source rows, pivot, CSV, isolation, no network, repeat, close, inline HTML delivery, missing dialog API and CSP failure passed.');
 } finally { await browser.close(); }

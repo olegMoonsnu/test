@@ -21,7 +21,7 @@ def metadata = [getMetaClass:{ type ->
 def execute = { items, selection, text, boolean withModule = true, String origin = 'OBJECT_LIST' ->
     def messages = [], scripts = []
     def ctx = [source:origin,subjects:selection,list:items,api:[metainfo:metadata],
-        result:[showMessage:{t,m ->messages << m},executeJavaScript:{js->scripts << js}]]
+        result:[showMessage:{t,m ->messages << m},executeJavaScript:{js-> assert js.getClass() == String; scripts << js}]]
     if (withModule) ctx.modules = [nsdAnalyticsStudio:module]
     new GroovyShell(new Binding(ctx)).evaluate(text)
     [messages:messages,scripts:scripts]
@@ -32,6 +32,11 @@ assert !success.scripts[0].contains('secret_value_not_in_report')
 // The browser suite exercises the emitted one-block action in a context without a module registry.
 def oneBlock = execute(rows, [rows.first()], standalone.replace("def metric = ''", "def metric = 'minutes'"), false)
 assert oneBlock == success
+assert !(oneBlock.scripts[0] =~ /(?i)<\/script/)
+def brokenProjection = new StudioList()
+brokenProjection << [:]
+def failedProjection = execute(brokenProjection, [], standalone, false)
+assert failedProjection.scripts.empty && failedProjection.messages.first().contains('чтение полей таблицы')
 if (args.length) new File(args[0]).setText(oneBlock.scripts[0],'UTF-8')
 assert execute(new StudioList(),[],standalone,false) == execute(new StudioList(),[],action)
 assert execute(rows,null,standalone,false).scripts.empty

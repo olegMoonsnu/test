@@ -5,6 +5,10 @@ export function openTableDialog(page, packet) {
   document.getElementById(id)?.dispatchEvent(new Event('nsd-table-studio-replace'));
   const focus = document.activeElement;
   const dialog = document.createElement('dialog');
+  if (!document.body || typeof dialog.showModal !== 'function' || typeof AbortController !== 'function') {
+    window.alert('Код кнопки выполнен. В этом окне браузера недоступны функции для открытия Studio.');
+    return;
+  }
   dialog.id = id;
   dialog.setAttribute('aria-label', 'Аналитика по текущей таблице');
   Object.assign(dialog.style, {
@@ -30,7 +34,7 @@ export function openTableDialog(page, packet) {
   function dispose() {
     clearTimeout(timer);
     listeners.abort();
-    dialog.close();
+    if (dialog.open) dialog.close();
     dialog.remove();
     if (focus?.isConnected) focus.focus();
   }
@@ -59,7 +63,13 @@ export function openTableDialog(page, packet) {
   }, options);
   dialog.append(notice, frame);
   document.body.append(dialog);
-  dialog.showModal();
+  try {
+    dialog.showModal();
+  } catch {
+    dispose();
+    window.alert('Код кнопки выполнен, но браузер не смог открыть диалог Studio.');
+    return;
+  }
   try {
     // The marker is in an application/json element, separate from executable code.
     frame.srcdoc = page.replace('NSD_TABLE_PACKET_HERE', () => packet.replace(/</g, '\\u003c'));
