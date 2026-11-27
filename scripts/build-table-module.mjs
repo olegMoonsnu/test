@@ -17,7 +17,24 @@ export async function buildTableModule(common) {
   // Groovy/JVM string constants have a 65535-byte limit. Join small independent constants at runtime.
   const parts = prefix.match(/[\s\S]{1,6000}/gu).map(s =>
     "'''" + s.replaceAll('\\','\\\\').replaceAll("'", "\\'") + "'''");
+  const expression = '[' + parts.join(',\n') + "].join('')";
   const template = await readFile('scripts/table-module.groovy.in','utf8');
-  await writeFile('groovy/table-studio/nsdAnalyticsStudio.groovy',
-    template.replace('/* GENERATED VIEWER */', () => '[' + parts.join(',\n') + "].join('')"));
+  const dir = 'groovy/table-studio';
+  const action = await readFile(dir + '/TableButton.groovy', 'utf8');
+  const marker = '/* GENERATED VIEWER */';
+  const moduleHeader = '// Модуль NSD: nsdAnalyticsStudio. Код действия передаёт только разрешённую проекцию.\n';
+  const imports = 'import groovy.json.JsonOutput\n\n';
+  await writeFile(dir + '/nsdAnalyticsStudio.groovy',
+    moduleHeader + imports + template.replace(marker, () => expression));
+
+  // Inline the same renderer in a local object so the event body can also run
+  // inside an enclosing NSD closure. Indent before inserting literal JS chunks.
+  const invoke = '    result.executeJavaScript(modules.nsdAnalyticsStudio.open(rows, settings))';
+  if (action.split(invoke).length !== 2) throw new Error('Expected one Studio call in TableButton.groovy');
+  const localMethods = template.trimEnd().replace(/^(.+)$/gm, '        $1');
+  const localCall = '    def studio = new Object() {\n' + localMethods.replace(marker, () => expression) +
+    '\n    }\n    result.executeJavaScript(studio.open(rows, settings))';
+  const actionHeader = '// Полное тело действия «Аналитика». Параметры находятся в начале файла.\n';
+  await writeFile(dir + '/TableAnalyticsAction.groovy',
+    actionHeader + imports + action.replace(invoke, () => localCall));
 }

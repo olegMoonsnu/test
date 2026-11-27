@@ -1,13 +1,10 @@
-// Модуль NSD: nsdAnalyticsStudio. Код действия передаёт только разрешённую проекцию.
-import groovy.json.JsonOutput
-
-String open(List rows, Map settings) {
-    if (rows == null || rows.size() > 1000) throw new IllegalArgumentException('В выборке больше 1000 строк')
-    checkSettings(settings, 0, [0] as int[])
+String open(List projectedRows, Map dashboardSettings) {
+    if (projectedRows == null || projectedRows.size() > 1000) throw new IllegalArgumentException('В выборке больше 1000 строк')
+    checkSettings(dashboardSettings, 0, [0] as int[])
     int limit = 2 * 1024 * 1024
     // Входные строки должны быть обычными Map со скалярными значениями.
     StringBuilder json = new StringBuilder('{"rows":[')
-    rows.eachWithIndex { row, index ->
+    projectedRows.eachWithIndex { row, index ->
         if (!(row instanceof LinkedHashMap || row instanceof HashMap) || row.size() > 96)
             throw new IllegalArgumentException('Ожидалась подготовленная строка отчёта')
         row.each { k, v ->
@@ -20,7 +17,7 @@ String open(List rows, Map settings) {
         json.append(JsonOutput.toJson(row))
         if (json.length() > limit) throw new IllegalArgumentException('Отчёт превышает 2 МиБ. Сузьте фильтр.')
     }
-    json.append('],"settings":').append(JsonOutput.toJson(settings)).append('}')
+    json.append('],"settings":').append(JsonOutput.toJson(dashboardSettings)).append('}')
     if (json.length() > limit) throw new IllegalArgumentException('Отчёт превышает 2 МиБ. Сузьте фильтр.')
     return viewerPrefix() + JsonOutput.toJson(json.toString()).replace('<', '\\u003c') + ');'
 }
